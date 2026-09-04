@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booster - Fast Paced Party Game</title>
+    <title>Booster - Tournament Edition</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,10 +16,10 @@
         <button id="join-btn">Join / Create Room</button>
     </div>
 
-    <!-- SCREEN 2: Lobby (Enter Chits) -->
+    <!-- SCREEN 2: Lobby (Initial Setup Only) -->
     <div id="lobby-screen" class="screen hidden">
         <h2>Room: <span id="display-room-code"></span></h2>
-        <p>Enter 3 favorite names/words to add to the deck:</p>
+        <p>Enter 3 favorite names/words to build the permanent deck:</p>
         <input type="text" id="chit-1" placeholder="Word 1">
         <input type="text" id="chit-2" placeholder="Word 2">
         <input type="text" id="chit-3" placeholder="Word 3">
@@ -27,20 +27,26 @@
         
         <h3>Players in Room:</h3>
         <ul id="player-list"></ul>
-        <button id="start-game-btn" class="hidden">Start Game (Host Only)</button>
+        <button id="start-game-btn" class="hidden">Start Tournament (Host)</button>
     </div>
 
     <!-- SCREEN 3: The Game -->
     <div id="game-screen" class="screen hidden">
-        <!-- New Opponents Bar -->
+        <h3 id="round-info" style="margin-top: 0; color: #c9184a; font-size: 16px;">Round 1 / 10</h3>
         <div id="opponents-container"></div>
-        
         <h2 id="turn-indicator" class="turn-text">Your Hand</h2>
         
         <div id="hand-container" style="display: flex; justify-content: center; flex-wrap: wrap;">
-            <!-- Chits injected here -->
+            <!-- Chits or Reaction Button -->
         </div>
-        <button id="boost-btn" class="hidden">BOOST!</button>
+        <button id="boost-btn" class="hidden">💥 TRIGGER BOOST! 💥</button>
+    </div>
+
+    <!-- SCREEN 4: Scoreboard & Finale -->
+    <div id="score-screen" class="screen hidden">
+        <h1 id="score-title">🏆 Leaderboard 🏆</h1>
+        <ul id="leaderboard-list"></ul>
+        <button id="next-round-btn" class="hidden">Start Next Round (Host)</button>
     </div>
 
     <script type="module" src="app.js"></script>
