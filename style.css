@@ -1,7 +1,7 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #ffe4e8; /* Soft light pink */
-    color: #4a4e69; /* Dark gray/purple text for readability */
+    background-color: #ffe4e8; 
+    color: #4a4e69; 
     display: flex;
     justify-content: center;
     align-items: center;
@@ -11,7 +11,7 @@ body {
 }
 
 .screen {
-    background: #fff0f3; /* Very light pink card */
+    background: #fff0f3; 
     padding: 30px;
     border-radius: 12px;
     box-shadow: 0 8px 20px rgba(255, 117, 143, 0.2);
@@ -23,9 +23,7 @@ body {
     display: none !important;
 }
 
-h1, h2, h3 {
-    color: #ff4d6d;
-}
+h1, h2, h3 { color: #ff4d6d; }
 
 input {
     width: 90%;
@@ -38,9 +36,7 @@ input {
     font-size: 16px;
 }
 
-input:focus {
-    outline: 2px solid #ff758f;
-}
+input:focus { outline: 2px solid #ff758f; }
 
 button {
     background-color: #ff4d6d;
@@ -56,19 +52,10 @@ button {
     transition: background 0.2s;
 }
 
-button:hover {
-    background-color: #c9184a;
-}
+button:hover { background-color: #c9184a; }
+button:disabled { background-color: #ffb3c1; cursor: not-allowed; }
 
-button:disabled {
-    background-color: #ffb3c1;
-    cursor: not-allowed;
-}
-
-ul {
-    list-style: none;
-    padding: 0;
-}
+ul { list-style: none; padding: 0; }
 
 li {
     background: #ffccd5;
@@ -80,7 +67,6 @@ li {
 }
 
 /* --- GAME SCREEN STYLES --- */
-
 #opponents-container {
     display: flex;
     justify-content: center;
@@ -98,10 +84,7 @@ li {
     border: 2px solid #ff758f;
 }
 
-.turn-text {
-    margin: 10px 0 20px 0;
-    font-size: 22px;
-}
+.turn-text { margin: 10px 0 20px 0; font-size: 22px; }
 
 .chit {
     background-color: #ff758f;
@@ -113,28 +96,58 @@ li {
     font-weight: bold;
     cursor: pointer;
     border: 3px solid #ff4d6d;
-    transition: transform 0.2s;
+    transition: transform 0.1s;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
-.chit:hover {
-    transform: scale(1.05);
-}
+.chit:hover { transform: scale(1.05); }
+.chit.disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.chit.cooldown { opacity: 0.7; transform: scale(0.95); } /* Anti-spam visual */
 
-.chit.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-}
-
+/* RICH MAGENTA MATCH BUTTON */
 #boost-btn {
     font-size: 30px;
     padding: 20px;
-    background-color: #2dc653; /* Bright green to stand out */
+    background-color: #c9184a; 
+    border: 4px solid #ff758f;
     animation: pulse 1s infinite alternate;
 }
 
 @keyframes pulse {
     from { transform: scale(1); }
     to { transform: scale(1.05); }
+}
+
+/* CRIMSON PANIC BUTTON */
+.panic-btn {
+    background-color: #d90429;
+    color: white;
+    font-size: 40px;
+    font-weight: 900;
+    width: 250px;
+    height: 250px;
+    border-radius: 50%;
+    border: 8px solid #ffb3c1;
+    box-shadow: 0 0 40px rgba(255, 117, 143, 0.8); /* Soft pink glow */
+    cursor: pointer;
+    animation: heartbeat 0.5s infinite alternate;
+    margin: 20px auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.panic-btn:active { transform: scale(0.9); }
+
+@keyframes heartbeat {
+    from { transform: scale(1); }
+    to { transform: scale(1.1); box-shadow: 0 0 60px rgba(217, 4, 41, 0.8); }
+}
+
+#leaderboard-list li {
+    font-size: 18px;
+    padding: 15px;
+    margin: 10px 0;
+    display: flex;
+    justify-content: space-between;
 }
