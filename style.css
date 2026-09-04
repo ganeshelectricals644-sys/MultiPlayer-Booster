@@ -1,7 +1,7 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #1a1a2e;
-    color: #fff;
+    background-color: #ffe4e8; /* Soft light pink */
+    color: #4a4e69; /* Dark gray/purple text for readability */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -11,11 +11,11 @@ body {
 }
 
 .screen {
-    background: #16213e;
+    background: #fff0f3; /* Very light pink card */
     padding: 30px;
     border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    width: 350px;
+    box-shadow: 0 8px 20px rgba(255, 117, 143, 0.2);
+    width: 380px;
     max-width: 90%;
 }
 
@@ -23,17 +23,27 @@ body {
     display: none !important;
 }
 
+h1, h2, h3 {
+    color: #ff4d6d;
+}
+
 input {
     width: 90%;
     padding: 10px;
     margin: 10px 0;
     border-radius: 6px;
-    border: none;
+    border: 1px solid #ffb3c1;
+    background-color: #fff;
+    color: #333;
     font-size: 16px;
 }
 
+input:focus {
+    outline: 2px solid #ff758f;
+}
+
 button {
-    background-color: #e94560;
+    background-color: #ff4d6d;
     color: white;
     border: none;
     padding: 12px 20px;
@@ -47,11 +57,11 @@ button {
 }
 
 button:hover {
-    background-color: #d1304b;
+    background-color: #c9184a;
 }
 
 button:disabled {
-    background-color: #555;
+    background-color: #ffb3c1;
     cursor: not-allowed;
 }
 
@@ -61,25 +71,70 @@ ul {
 }
 
 li {
-    background: #0f3460;
+    background: #ffccd5;
+    color: #4a4e69;
+    font-weight: bold;
     margin: 5px 0;
     padding: 10px;
     border-radius: 4px;
 }
 
-/* The Playing Cards / Chits */
+/* --- GAME SCREEN STYLES --- */
+
+#opponents-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.opponent-badge {
+    background-color: #ffccd5;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+    border: 2px solid #ff758f;
+}
+
+.turn-text {
+    margin: 10px 0 20px 0;
+    font-size: 22px;
+}
+
 .chit {
-    background-color: #0f3460;
+    background-color: #ff758f;
+    color: white;
     padding: 15px;
-    margin: 10px;
+    margin: 8px;
     border-radius: 8px;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: bold;
     cursor: pointer;
-    border: 2px solid #e94560;
+    border: 3px solid #ff4d6d;
     transition: transform 0.2s;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 .chit:hover {
     transform: scale(1.05);
+}
+
+.chit.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+#boost-btn {
+    font-size: 30px;
+    padding: 20px;
+    background-color: #2dc653; /* Bright green to stand out */
+    animation: pulse 1s infinite alternate;
+}
+
+@keyframes pulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.05); }
 }
