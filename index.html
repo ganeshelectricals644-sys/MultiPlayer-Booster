@@ -32,14 +32,17 @@
 
     <!-- SCREEN 3: The Game -->
     <div id="game-screen" class="screen hidden">
-        <h2>Your Hand</h2>
+        <!-- New Opponents Bar -->
+        <div id="opponents-container"></div>
+        
+        <h2 id="turn-indicator" class="turn-text">Your Hand</h2>
+        
         <div id="hand-container" style="display: flex; justify-content: center; flex-wrap: wrap;">
-            <!-- Chits will be injected here via JavaScript -->
+            <!-- Chits injected here -->
         </div>
         <button id="boost-btn" class="hidden">BOOST!</button>
     </div>
 
-    <!-- Firebase SDK (v9 Modular) & Game Logic -->
     <script type="module" src="app.js"></script>
 </body>
 </html>
