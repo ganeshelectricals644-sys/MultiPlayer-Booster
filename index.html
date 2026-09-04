@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booster - Fast Paced Party Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- SCREEN 1: Join/Create Room -->
+    <div id="login-screen" class="screen">
+        <h1>🚀 BOOSTER</h1>
+        <input type="text" id="player-name" placeholder="Enter your name..." autocomplete="off">
+        <input type="text" id="room-code" placeholder="Room Code (Leave blank to create)" autocomplete="off">
+        <button id="join-btn">Join / Create Room</button>
+    </div>
+
+    <!-- SCREEN 2: Lobby (Enter Chits) -->
+    <div id="lobby-screen" class="screen hidden">
+        <h2>Room: <span id="display-room-code"></span></h2>
+        <p>Enter 3 favorite names/words to add to the deck:</p>
+        <input type="text" id="chit-1" placeholder="Word 1">
+        <input type="text" id="chit-2" placeholder="Word 2">
+        <input type="text" id="chit-3" placeholder="Word 3">
+        <button id="ready-btn">I'm Ready!</button>
+        
+        <h3>Players in Room:</h3>
+        <ul id="player-list"></ul>
+        <button id="start-game-btn" class="hidden">Start Game (Host Only)</button>
+    </div>
+
+    <!-- SCREEN 3: The Game -->
+    <div id="game-screen" class="screen hidden">
+        <h2>Your Hand</h2>
+        <div id="hand-container" style="display: flex; justify-content: center; flex-wrap: wrap;">
+            <!-- Chits will be injected here via JavaScript -->
+        </div>
+        <button id="boost-btn" class="hidden">BOOST!</button>
+    </div>
+
+    <!-- Firebase SDK (v9 Modular) & Game Logic -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
