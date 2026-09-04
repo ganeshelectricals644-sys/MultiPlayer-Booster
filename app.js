@@ -40,8 +40,9 @@ joinBtn.addEventListener('click', async () => {
     if (!playerName) return alert("Please enter your name!");
 
     if (inputRoom) {
-        roomId = inputRoom;
+        roomId = inputRoom; // Joining an existing room
     } else {
+        // Creating a new room
         roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
         isHost = true;
         await set(ref(db, `rooms/${roomId}/gameState`), 'lobby');
@@ -108,7 +109,7 @@ startGameBtn.addEventListener('click', async () => {
     });
 });
 
-// 4. Live Updates from Firebase
+// 4. Live Updates from Firebase (FIXED)
 function listenToRoomUpdates() {
     const roomRef = ref(db, `rooms/${roomId}`);
     
@@ -116,7 +117,10 @@ function listenToRoomUpdates() {
         const data = snapshot.val();
         if (!data) return; 
 
-        if (data.gameState === 'lobby') {
+        // THE FIX: If the game state is somehow missing, assume we are in the lobby!
+        const currentState = data.gameState || 'lobby';
+
+        if (currentState === 'lobby') {
             const players = data.players || {};
             playerListEl.innerHTML = ""; 
             let allReady = true;
@@ -138,7 +142,7 @@ function listenToRoomUpdates() {
             }
         }
         
-        if (data.gameState === 'passing' || data.gameState === 'reacting') {
+        if (currentState === 'passing' || currentState === 'reacting') {
             lobbyScreen.classList.add('hidden');
             gameScreen.classList.remove('hidden');
             
