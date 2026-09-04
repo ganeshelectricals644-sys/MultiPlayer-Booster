@@ -2,7 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/fireba
 import { getDatabase, ref, set, onValue, update, onDisconnect, get } 
 from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
 
-// Your Firebase keys
 const firebaseConfig = {
     apiKey: "AIzaSyAzKv1h2-D7wFrwmFxiE4i3OF7xC-MlDDs",
     authDomain: "booster-game-b9a1c.firebaseapp.com",
@@ -16,12 +15,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Game Variables
 let playerId = `player_${Math.random().toString(36).substring(2, 9)}`; 
 let roomId = "";
 let isHost = false;
 
-// HTML Elements
 const loginScreen = document.getElementById('login-screen');
 const lobbyScreen = document.getElementById('lobby-screen');
 const gameScreen = document.getElementById('game-screen');
@@ -31,6 +28,8 @@ const startGameBtn = document.getElementById('start-game-btn');
 const playerListEl = document.getElementById('player-list');
 const handContainer = document.getElementById('hand-container');
 const boostBtn = document.getElementById('boost-btn');
+const opponentsContainer = document.getElementById('opponents-container');
+const turnIndicator = document.getElementById('turn-indicator');
 
 // 1. Join / Create Room
 joinBtn.addEventListener('click', async () => {
@@ -76,13 +75,13 @@ readyBtn.addEventListener('click', async () => {
     readyBtn.innerText = "Waiting for others...";
 });
 
-// 3. Host Starts Game (Shuffle & Deal)
+// 3. Host Starts Game
 startGameBtn.addEventListener('click', async () => {
     const snapshot = await get(ref(db, `rooms/${roomId}/players`));
     const players = snapshot.val();
     
     let allChits = [];
-    let playerIds = Object.keys(players);
+    let playerIds = Object.keys(players).sort(); // Sorted to define the circle order
     
     for (let id of playerIds) {
         if (players[id].chits) {
@@ -90,6 +89,7 @@ startGameBtn.addEventListener('click', async () => {
         }
     }
     
+    // Shuffle Array
     for (let i = allChits.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [allChits[i], allChits[j]] = [allChits[j], allChits[i]];
@@ -103,7 +103,7 @@ startGameBtn.addEventListener('click', async () => {
     await update(ref(db, `rooms/${roomId}`), {
         gameState: 'passing',
         hands: hands,
-        passBuffer: {} 
+        currentTurn: playerIds[0] // Set turn to the first player in the circle
     });
 });
 
@@ -117,6 +117,7 @@ function listenToRoomUpdates() {
 
         const currentState = data.gameState || 'lobby';
 
+        // LOBBY LOGIC
         if (currentState === 'lobby') {
             const players = data.players || {};
             playerListEl.innerHTML = ""; 
@@ -139,71 +140,82 @@ function listenToRoomUpdates() {
             }
         }
         
+        // GAME LOGIC
         if (currentState === 'passing' || currentState === 'reacting') {
             lobbyScreen.classList.add('hidden');
             gameScreen.classList.remove('hidden');
             
-            const myHand = data.hands ? data.hands[playerId] : [];
-            handContainer.innerHTML = ""; 
+            const myHand = data.hands ? (data.hands[playerId] || []) : [];
+            const players = data.players || {};
+            const playerIds = Object.keys(players).sort();
+            const isMyTurn = (data.currentTurn === playerId);
             
-            // --- NEW: RENDER CHITS & CLICK-TO-PASS LOGIC ---
+            // Render Opponents Bar
+            opponentsContainer.innerHTML = "";
+            for (const [id, player] of Object.entries(players)) {
+                if (id !== playerId) {
+                    const opponentHandSize = data.hands && data.hands[id] ? data.hands[id].length : 0;
+                    const badge = document.createElement('div');
+                    badge.className = 'opponent-badge';
+                    // Highlight if it is their turn
+                    if (data.currentTurn === id) badge.style.backgroundColor = '#ff4d6d'; 
+                    badge.innerText = `${player.name}: ${opponentHandSize} 🃏`;
+                    opponentsContainer.appendChild(badge);
+                }
+            }
+            
+            // Update Turn Text
+            if (isMyTurn) {
+                turnIndicator.innerText = "Your Turn! Pass a card.";
+                turnIndicator.style.color = "#ff4d6d";
+            } else {
+                const activePlayerName = players[data.currentTurn] ? players[data.currentTurn].name : "someone";
+                turnIndicator.innerText = `Waiting for ${activePlayerName}...`;
+                turnIndicator.style.color = "#4a4e69";
+            }
+
+            // Render Hand & Pass Logic
+            handContainer.innerHTML = ""; 
             myHand.forEach((chit, index) => {
                 const chitDiv = document.createElement('div');
                 chitDiv.className = 'chit';
+                if (!isMyTurn) chitDiv.classList.add('disabled');
                 chitDiv.innerText = chit;
                 
-                // When a player clicks a chit to pass it
+                // Clicking to pass
                 chitDiv.addEventListener('click', async () => {
-                    // Prevent passing if they already passed one (only hold 2 chits)
-                    if (myHand.length < 3) return;
+                    if (!isMyTurn) return; // Ignore clicks if it's not their turn
                     
-                    // 1. Remove the clicked chit from their hand array
-                    let newHand = [...myHand];
-                    newHand.splice(index, 1); 
+                    // Remove card from my hand
+                    let newMyHand = [...myHand];
+                    newMyHand.splice(index, 1);
                     
-                    // 2. Update Firebase with the smaller hand AND put the chit in the passing buffer
+                    // Figure out who the next player is
+                    let myIndex = playerIds.indexOf(playerId);
+                    let nextIndex = (myIndex + 1) % playerIds.length;
+                    let nextPlayerId = playerIds[nextIndex];
+                    
+                    // Add card to next player's hand
+                    let nextPlayerHand = [...(data.hands[nextPlayerId] || [])];
+                    nextPlayerHand.push(chit);
+                    
+                    // Update Firebase instantly
                     let updates = {};
-                    updates[`rooms/${roomId}/hands/${playerId}`] = newHand;
-                    updates[`rooms/${roomId}/passBuffer/${playerId}`] = chit;
+                    updates[`rooms/${roomId}/hands/${playerId}`] = newMyHand;
+                    updates[`rooms/${roomId}/hands/${nextPlayerId}`] = nextPlayerHand;
+                    updates[`rooms/${roomId}/currentTurn`] = nextPlayerId; // Pass turn
                     await update(ref(db), updates);
                 });
 
                 handContainer.appendChild(chitDiv);
             });
             
-            // Check for BOOST condition (all 3 match)
+            // BOOST CONDITION: Must have EXACTLY 3 cards, and they must all match.
+            // If they have 4 cards (because someone just passed to them), they have to discard first!
             if (myHand.length === 3 && myHand[0] === myHand[1] && myHand[1] === myHand[2]) {
                 boostBtn.classList.remove('hidden');
             } else {
                 boostBtn.classList.add('hidden');
-            }
-            
-            // --- NEW: HOST LOGIC TO ROTATE CHITS ---
-            if (isHost && data.passBuffer) {
-                const passedPlayers = Object.keys(data.passBuffer);
-                const totalPlayers = Object.keys(data.players).length;
-
-                // If everyone has passed a chit into the buffer...
-                if (passedPlayers.length === totalPlayers) {
-                    
-                    let playerIds = Object.keys(data.players).sort(); // Sort to make a consistent circle
-                    let newHands = { ...data.hands };
-
-                    // Shift the chits to the left
-                    for (let i = 0; i < totalPlayers; i++) {
-                        let prevPlayerIndex = (i === 0) ? totalPlayers - 1 : i - 1;
-                        let prevPlayerId = playerIds[prevPlayerIndex];
-                        let passedCard = data.passBuffer[prevPlayerId];
-
-                        newHands[playerIds[i]].push(passedCard);
-                    }
-
-                    // Push the new hands back to Firebase and empty the buffer
-                    update(ref(db, `rooms/${roomId}`), {
-                        hands: newHands,
-                        passBuffer: null
-                    });
-                }
             }
         }
     });
