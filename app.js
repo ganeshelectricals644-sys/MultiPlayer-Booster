@@ -40,9 +40,8 @@ joinBtn.addEventListener('click', async () => {
     if (!playerName) return alert("Please enter your name!");
 
     if (inputRoom) {
-        roomId = inputRoom; // Joining an existing room
+        roomId = inputRoom; 
     } else {
-        // Creating a new room
         roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
         isHost = true;
         await set(ref(db, `rooms/${roomId}/gameState`), 'lobby');
@@ -91,7 +90,6 @@ startGameBtn.addEventListener('click', async () => {
         }
     }
     
-    // Shuffle Array
     for (let i = allChits.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [allChits[i], allChits[j]] = [allChits[j], allChits[i]];
@@ -109,7 +107,7 @@ startGameBtn.addEventListener('click', async () => {
     });
 });
 
-// 4. Live Updates from Firebase (FIXED)
+// 4. Live Updates from Firebase
 function listenToRoomUpdates() {
     const roomRef = ref(db, `rooms/${roomId}`);
     
@@ -117,7 +115,6 @@ function listenToRoomUpdates() {
         const data = snapshot.val();
         if (!data) return; 
 
-        // THE FIX: If the game state is somehow missing, assume we are in the lobby!
         const currentState = data.gameState || 'lobby';
 
         if (currentState === 'lobby') {
@@ -149,17 +146,64 @@ function listenToRoomUpdates() {
             const myHand = data.hands ? data.hands[playerId] : [];
             handContainer.innerHTML = ""; 
             
-            myHand.forEach((chit) => {
+            // --- NEW: RENDER CHITS & CLICK-TO-PASS LOGIC ---
+            myHand.forEach((chit, index) => {
                 const chitDiv = document.createElement('div');
                 chitDiv.className = 'chit';
                 chitDiv.innerText = chit;
+                
+                // When a player clicks a chit to pass it
+                chitDiv.addEventListener('click', async () => {
+                    // Prevent passing if they already passed one (only hold 2 chits)
+                    if (myHand.length < 3) return;
+                    
+                    // 1. Remove the clicked chit from their hand array
+                    let newHand = [...myHand];
+                    newHand.splice(index, 1); 
+                    
+                    // 2. Update Firebase with the smaller hand AND put the chit in the passing buffer
+                    let updates = {};
+                    updates[`rooms/${roomId}/hands/${playerId}`] = newHand;
+                    updates[`rooms/${roomId}/passBuffer/${playerId}`] = chit;
+                    await update(ref(db), updates);
+                });
+
                 handContainer.appendChild(chitDiv);
             });
             
+            // Check for BOOST condition (all 3 match)
             if (myHand.length === 3 && myHand[0] === myHand[1] && myHand[1] === myHand[2]) {
                 boostBtn.classList.remove('hidden');
             } else {
                 boostBtn.classList.add('hidden');
+            }
+            
+            // --- NEW: HOST LOGIC TO ROTATE CHITS ---
+            if (isHost && data.passBuffer) {
+                const passedPlayers = Object.keys(data.passBuffer);
+                const totalPlayers = Object.keys(data.players).length;
+
+                // If everyone has passed a chit into the buffer...
+                if (passedPlayers.length === totalPlayers) {
+                    
+                    let playerIds = Object.keys(data.players).sort(); // Sort to make a consistent circle
+                    let newHands = { ...data.hands };
+
+                    // Shift the chits to the left
+                    for (let i = 0; i < totalPlayers; i++) {
+                        let prevPlayerIndex = (i === 0) ? totalPlayers - 1 : i - 1;
+                        let prevPlayerId = playerIds[prevPlayerIndex];
+                        let passedCard = data.passBuffer[prevPlayerId];
+
+                        newHands[playerIds[i]].push(passedCard);
+                    }
+
+                    // Push the new hands back to Firebase and empty the buffer
+                    update(ref(db, `rooms/${roomId}`), {
+                        hands: newHands,
+                        passBuffer: null
+                    });
+                }
             }
         }
     });
