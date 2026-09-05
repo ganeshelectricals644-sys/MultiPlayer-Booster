@@ -8,7 +8,7 @@ body {
     height: 100vh;
     margin: 0;
     text-align: center;
-    overflow: hidden; /* Prevent scrolling when emojis float */
+    overflow: hidden; 
 }
 
 .screen {
@@ -58,11 +58,19 @@ li { background: #ffccd5; margin: 5px 0; padding: 10px; border-radius: 4px; font
 #game-table {
     position: relative;
     width: 100%;
-    height: 320px;
+    height: 340px;
     margin: 20px auto;
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+#opponents-container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0; left: 0;
+    pointer-events: none; /* 🐛 BUG FIX: Allows you to click the cards underneath! */
 }
 
 #hand-container {
@@ -71,19 +79,34 @@ li { background: #ffccd5; margin: 5px 0; padding: 10px; border-radius: 4px; font
     justify-content: center;
     flex-wrap: wrap;
     z-index: 10;
-    width: 200px;
+    width: 220px;
 }
 
 .opponent-badge {
     position: absolute;
+    left: 50%;
+    top: 50%;
     background-color: #ffccd5;
-    padding: 6px 10px;
-    border-radius: 20px;
-    font-size: 12px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 14px;
     font-weight: bold;
     border: 2px solid #ff758f;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     transition: all 0.3s ease;
+    transform-origin: center;
+}
+
+/* NEW: The invisible boxes (card backs) */
+.mini-card {
+    width: 16px;
+    height: 24px;
+    background-color: #ff758f; 
+    border: 2px solid white;
+    border-radius: 4px;
+    margin: 0 3px;
+    display: inline-block;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .chit {
@@ -108,15 +131,26 @@ li { background: #ffccd5; margin: 5px 0; padding: 10px; border-radius: 4px; font
 .chit.disabled { opacity: 0.4; cursor: not-allowed; animation: none; }
 .chit.cooldown { opacity: 0.7; transform: scale(0.9); animation: none; }
 
-/* PANIC MODE */
-.panic-mode {
-    background-color: #370617 !important;
+/* NEW: Shake effect if clicking out of turn */
+@keyframes shake {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(5px); }
+    75% { transform: translateX(-5px); }
+    100% { transform: translateX(0); }
 }
+.shake-error {
+    animation: shake 0.3s ease-in-out;
+}
+
+/* PANIC MODE */
+.panic-mode { background-color: #370617 !important; }
 
 #trigger-boost-btn {
     background-color: #c9184a; 
     border: 4px solid #ff758f;
     animation: pulse 1s infinite alternate;
+    z-index: 20;
 }
 
 .panic-btn {
@@ -134,8 +168,13 @@ li { background: #ffccd5; margin: 5px 0; padding: 10px; border-radius: 4px; font
     justify-content: center;
     align-items: center;
     animation: heartbeat 0.4s infinite alternate;
+    z-index: 20;
 }
 
+@keyframes pulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.05); }
+}
 @keyframes heartbeat {
     from { transform: scale(1); }
     to { transform: scale(1.1); box-shadow: 0 0 70px rgba(255, 77, 109, 1); }
@@ -148,7 +187,6 @@ li { background: #ffccd5; margin: 5px 0; padding: 10px; border-radius: 4px; font
     gap: 15px;
     margin-top: 10px;
 }
-
 .emoji-btn {
     width: 50px;
     height: 50px;
@@ -158,7 +196,6 @@ li { background: #ffccd5; margin: 5px 0; padding: 10px; border-radius: 4px; font
     background: #ffb3c1;
     border: 2px solid white;
 }
-
 .floating-emoji {
     position: fixed;
     bottom: 20%;
@@ -168,7 +205,6 @@ li { background: #ffccd5; margin: 5px 0; padding: 10px; border-radius: 4px; font
     animation: floatUp 2s ease-out forwards;
     z-index: 1000;
 }
-
 @keyframes floatUp {
     0% { transform: translate(-50%, 0) scale(1); opacity: 1; }
     100% { transform: translate(-50%, -300px) scale(1.5); opacity: 0; }
