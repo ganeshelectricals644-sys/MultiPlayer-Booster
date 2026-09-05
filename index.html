@@ -3,12 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booster - Tournament Edition</title>
+    <title>Booster - Ultimate Edition</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-    <!-- SCREEN 1: Join/Create Room -->
     <div id="login-screen" class="screen">
         <h1>🚀 BOOSTER</h1>
         <input type="text" id="player-name" placeholder="Enter your name..." autocomplete="off">
@@ -16,33 +14,41 @@
         <button id="join-btn">Join / Create Room</button>
     </div>
 
-    <!-- SCREEN 2: Lobby (Initial Setup Only) -->
     <div id="lobby-screen" class="screen hidden">
         <h2>Room: <span id="display-room-code"></span></h2>
-        <p>Enter 3 favorite names/words to build the permanent deck:</p>
+        <p>Enter 3 favorite names/words to build the deck:</p>
         <input type="text" id="chit-1" placeholder="Word 1">
         <input type="text" id="chit-2" placeholder="Word 2">
         <input type="text" id="chit-3" placeholder="Word 3">
         <button id="ready-btn">I'm Ready!</button>
-        
         <h3>Players in Room:</h3>
         <ul id="player-list"></ul>
         <button id="start-game-btn" class="hidden">Start Tournament (Host)</button>
     </div>
 
-    <!-- SCREEN 3: The Game -->
     <div id="game-screen" class="screen hidden">
-        <h3 id="round-info" style="margin-top: 0; color: #c9184a; font-size: 16px;">Round 1 / 10</h3>
-        <div id="opponents-container"></div>
+        <h3 id="round-info" style="margin-top: 0; color: #c9184a;">Round 1 / 10</h3>
         <h2 id="turn-indicator" class="turn-text">Your Hand</h2>
         
-        <div id="hand-container" style="display: flex; justify-content: center; flex-wrap: wrap;">
-            <!-- Chits or Reaction Button -->
+        <!-- Radial Table Container -->
+        <div id="game-table">
+            <div id="opponents-container"></div>
+            <div id="hand-container">
+                <!-- Chits or Reaction Button go in the core -->
+            </div>
         </div>
-        <button id="boost-btn" class="hidden">💥 TRIGGER BOOST! 💥</button>
+
+        <button id="trigger-boost-btn" class="hidden">💥 TRIGGER BOOST! 💥</button>
+        
+        <!-- Emoji Reactions -->
+        <div id="emoji-bar" class="hidden">
+            <button class="emoji-btn">🤬</button>
+            <button class="emoji-btn">😂</button>
+            <button class="emoji-btn">⏳</button>
+            <button class="emoji-btn">🏃💨</button>
+        </div>
     </div>
 
-    <!-- SCREEN 4: Scoreboard & Finale -->
     <div id="score-screen" class="screen hidden">
         <h1 id="score-title">🏆 Leaderboard 🏆</h1>
         <ul id="leaderboard-list"></ul>
