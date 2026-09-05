@@ -49,12 +49,10 @@ const roundInfo = document.getElementById('round-info');
 function showScreen(screenName) {
     Object.values(screens).forEach(s => s.classList.add('hidden'));
     screens[screenName].classList.remove('hidden');
-    
-    // Remove panic mode background if returning to regular game
     if (screenName === 'game') screens.game.classList.remove('panic-mode');
 }
 
-// --- AUDIO & HAPTICS SETUP ---
+// --- AUDIO & HAPTICS SETUP (FIXED) ---
 function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -63,21 +61,23 @@ function initAudio() {
 function playSound(type) {
     if (!audioCtx) return;
     const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
     
     if (type === 'pass') {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-        gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
         osc.start(); 
         osc.stop(audioCtx.currentTime + 0.1);
         if (navigator.vibrate) navigator.vibrate(30);
     } else if (type === 'panic') {
         osc.type = 'square';
         osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-        gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
         osc.start(); 
         osc.stop(audioCtx.currentTime + 0.5);
         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
@@ -86,7 +86,7 @@ function playSound(type) {
 
 // --- 1. JOIN / CREATE ROOM ---
 joinBtn.addEventListener('click', async () => {
-    initAudio(); // Must initialize audio on first user click
+    initAudio(); 
     const playerName = document.getElementById('player-name').value.trim();
     let inputRoom = document.getElementById('room-code').value.trim().toUpperCase();
     
@@ -131,7 +131,6 @@ async function dealRound(targetRound) {
     let allChits = roomData.chitPool || [];
     let playerIds = Object.keys(roomData.players).sort();
     
-    // Create permanent deck on Round 1
     if (allChits.length === 0) {
         playerIds.forEach(id => {
             if (roomData.players[id].chits) allChits.push(...roomData.players[id].chits);
@@ -139,7 +138,6 @@ async function dealRound(targetRound) {
         await set(ref(db, `rooms/${roomId}/chitPool`), allChits);
     }
     
-    // Shuffle Array
     let deckToDeal = [...allChits];
     for (let i = deckToDeal.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -149,7 +147,6 @@ async function dealRound(targetRound) {
     let hands = {};
     playerIds.forEach(id => hands[id] = [deckToDeal.pop(), deckToDeal.pop(), deckToDeal.pop()]);
     
-    // Reset round state
     await update(ref(db, `rooms/${roomId}`), {
         gameState: 'passing',
         hands: hands,
@@ -167,7 +164,6 @@ nextRoundBtn.addEventListener('click', async () => {
     const currentRound = snapshot.val().roundNumber || 1;
     
     if (currentRound >= MAX_ROUNDS) {
-        // Reset Entire Tournament
         let resetUpdates = {};
         const players = snapshot.val().players;
         Object.keys(players).forEach(id => {
@@ -179,7 +175,6 @@ nextRoundBtn.addEventListener('click', async () => {
         resetUpdates[`rooms/${roomId}/chitPool`] = null; 
         await update(ref(db), resetUpdates);
     } else {
-        // Start Next Round
         dealRound(currentRound + 1);
     }
 });
@@ -196,7 +191,7 @@ triggerBoostBtn.addEventListener('click', async () => {
     playSound('panic');
     let updates = {};
     updates[`rooms/${roomId}/gameState`] = 'reacting';
-    updates[`rooms/${roomId}/boostOrder/${playerId}`] = Date.now(); // Lock in 1st place
+    updates[`rooms/${roomId}/boostOrder/${playerId}`] = Date.now(); 
     await update(ref(db), updates);
     triggerBoostBtn.classList.add('hidden');
 });
@@ -210,7 +205,6 @@ function listenToRoomUpdates() {
         const players = data.players || {};
         const playerIds = Object.keys(players);
         
-        // Handle incoming Emojis
         if (data.emojiEvent && data.emojiEvent.ts > lastEmojiTs) {
             lastEmojiTs = data.emojiEvent.ts;
             const floater = document.createElement('div');
@@ -220,7 +214,6 @@ function listenToRoomUpdates() {
             setTimeout(() => floater.remove(), 2000);
         }
         
-        // Find current overall leader
         let leaderId = playerIds.length > 0 ? playerIds.reduce((a, b) => (players[a].totalScore > players[b].totalScore) ? a : b) : null;
 
         // --- PHASE 1: LOBBY ---
@@ -254,7 +247,6 @@ function listenToRoomUpdates() {
             const myHand = data.hands ? (data.hands[playerId] || []) : [];
             const isMyTurn = (data.currentTurn === playerId);
             
-            // Render Radial Opponents & Invisible Card Boxes
             opponentsContainer.innerHTML = "";
             let oppIndex = 0;
             const totalOpponents = Math.max(1, playerIds.length - 1);
@@ -271,14 +263,12 @@ function listenToRoomUpdates() {
                     badge.style.transform = `translate(${x}px, ${y}px)`;
                     if (data.currentTurn === id) badge.style.backgroundColor = '#ff4d6d'; 
                     
-                    // Name text
                     const nameEl = document.createElement('div');
                     nameEl.style.marginBottom = '6px';
                     nameEl.style.color = data.currentTurn === id ? 'white' : '#4a4e69';
                     nameEl.innerText = id === leaderId && player.totalScore > 0 ? `👑 ${player.name}` : player.name;
                     badge.appendChild(nameEl);
 
-                    // Invisible Card Boxes
                     const tray = document.createElement('div');
                     tray.style.display = 'flex';
                     tray.style.justifyContent = 'center';
@@ -298,7 +288,6 @@ function listenToRoomUpdates() {
             
             turnIndicator.innerText = isMyTurn ? "Your Turn! Pass a card." : `Waiting for ${players[data.currentTurn]?.name}...`;
             
-            // Render Hand
             handContainer.innerHTML = ""; 
             myHand.forEach((chit, index) => {
                 const chitDiv = document.createElement('div');
@@ -307,14 +296,12 @@ function listenToRoomUpdates() {
                 chitDiv.innerText = chit;
                 
                 chitDiv.addEventListener('click', async () => {
-                    // Shake animation if clicking out of turn
                     if (!isMyTurn) {
                         chitDiv.classList.add('shake-error');
                         setTimeout(() => chitDiv.classList.remove('shake-error'), 300);
                         return;
                     }
                     
-                    // Anti-Spam Check
                     if (clickCooldown) return; 
                     clickCooldown = true;
                     playSound('pass');
@@ -336,7 +323,6 @@ function listenToRoomUpdates() {
                 handContainer.appendChild(chitDiv);
             });
             
-            // Win Condition
             if (myHand.length === 3 && myHand[0] === myHand[1] && myHand[1] === myHand[2]) {
                 triggerBoostBtn.classList.remove('hidden');
             } else {
@@ -368,7 +354,6 @@ function listenToRoomUpdates() {
                 handContainer.appendChild(panicBtn);
             }
 
-            // Host exact player-count score slicing
             if (isHost && Object.keys(boostOrder).length === playerIds.length) {
                 const sortedPlayers = Object.entries(boostOrder).sort((a, b) => a[1] - b[1]);
                 const validTiers = POINTS_TIERS.slice(0, playerIds.length); 
