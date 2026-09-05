@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, update, onDisconnect, get } 
+import { getDatabase, ref, set, onValue, update, onDisconnect, get, serverTimestamp } 
 from "https://www.gstatic.com/firebasejs/12.18.0/firebase-database.js";
 
 // --- FIREBASE CONFIGURATION ---
@@ -24,9 +24,7 @@ let clickCooldown = false;
 let audioCtx = null;
 let lastEmojiTs = Date.now();
 const MAX_ROUNDS = 10;
-const POINTS_TIERS = [100, 50, 25, 15, 15, 10, 10, 10]; 
 
-// --- HTML ELEMENTS ---
 const screens = {
     login: document.getElementById('login-screen'),
     lobby: document.getElementById('lobby-screen'),
@@ -45,14 +43,13 @@ const handContainer = document.getElementById('hand-container');
 const turnIndicator = document.getElementById('turn-indicator');
 const roundInfo = document.getElementById('round-info');
 
-// --- HELPER FUNCTIONS ---
 function showScreen(screenName) {
     Object.values(screens).forEach(s => s.classList.add('hidden'));
     screens[screenName].classList.remove('hidden');
     if (screenName === 'game') screens.game.classList.remove('panic-mode');
 }
 
-// --- AUDIO & HAPTICS SETUP (FIXED) ---
+// --- AUDIO & HAPTICS SETUP ---
 function initAudio() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -70,16 +67,14 @@ function playSound(type) {
         osc.frequency.setValueAtTime(600, audioCtx.currentTime);
         gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        osc.start(); 
-        osc.stop(audioCtx.currentTime + 0.1);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
         if (navigator.vibrate) navigator.vibrate(30);
     } else if (type === 'panic') {
         osc.type = 'square';
         osc.frequency.setValueAtTime(150, audioCtx.currentTime);
         gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-        osc.start(); 
-        osc.stop(audioCtx.currentTime + 0.5);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.5);
         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
     }
 }
@@ -91,10 +86,8 @@ joinBtn.addEventListener('click', async () => {
     let inputRoom = document.getElementById('room-code').value.trim().toUpperCase();
     
     if (!playerName) return alert("Please enter your name!");
-
-    if (inputRoom) {
-        roomId = inputRoom;
-    } else {
+    if (inputRoom) { roomId = inputRoom; } 
+    else {
         roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
         isHost = true;
         await set(ref(db, `rooms/${roomId}/gameState`), 'lobby');
@@ -118,13 +111,12 @@ readyBtn.addEventListener('click', async () => {
         document.getElementById('chit-3').value.trim()
     ];
     if (chits.includes("")) return alert("Please fill in all 3 chits!");
-    
     await update(ref(db, `rooms/${roomId}/players/${playerId}`), { status: 'ready', chits });
     readyBtn.disabled = true;
     readyBtn.innerText = "Waiting for others...";
 });
 
-// --- 3. HOST CONTROLS (DEALING & ROUND LOGIC) ---
+// --- 3. HOST CONTROLS (DEALING) ---
 async function dealRound(targetRound) {
     const snapshot = await get(ref(db, `rooms/${roomId}`));
     const roomData = snapshot.val();
@@ -148,12 +140,8 @@ async function dealRound(targetRound) {
     playerIds.forEach(id => hands[id] = [deckToDeal.pop(), deckToDeal.pop(), deckToDeal.pop()]);
     
     await update(ref(db, `rooms/${roomId}`), {
-        gameState: 'passing',
-        hands: hands,
-        currentTurn: playerIds[0],
-        boostOrder: null, 
-        emojiEvent: null,
-        roundNumber: targetRound
+        gameState: 'passing', hands: hands, currentTurn: playerIds[0],
+        boostOrder: null, emojiEvent: null, roundNumber: targetRound
     });
 }
 
@@ -174,29 +162,27 @@ nextRoundBtn.addEventListener('click', async () => {
         resetUpdates[`rooms/${roomId}/gameState`] = "lobby";
         resetUpdates[`rooms/${roomId}/chitPool`] = null; 
         await update(ref(db), resetUpdates);
-    } else {
-        dealRound(currentRound + 1);
-    }
+    } else { dealRound(currentRound + 1); }
 });
 
-// --- 4. FLOATING EMOJIS EVENT ---
+// --- 4. FLOATING EMOJIS ---
 document.querySelectorAll('.emoji-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
         await set(ref(db, `rooms/${roomId}/emojiEvent`), { emoji: btn.innerText, ts: Date.now() });
     });
 });
 
-// --- 5. THE INITIATOR BUTTON ---
+// --- 5. THE INITIATOR ---
 triggerBoostBtn.addEventListener('click', async () => {
     playSound('panic');
     let updates = {};
     updates[`rooms/${roomId}/gameState`] = 'reacting';
-    updates[`rooms/${roomId}/boostOrder/${playerId}`] = Date.now(); 
+    updates[`rooms/${roomId}/boostOrder/${playerId}`] = serverTimestamp(); 
     await update(ref(db), updates);
     triggerBoostBtn.classList.add('hidden');
 });
 
-// --- 6. MAIN REAL-TIME GAME LOOP ---
+// --- 6. MAIN GAME LOOP ---
 function listenToRoomUpdates() {
     onValue(ref(db, `rooms/${roomId}`), async (snapshot) => {
         const data = snapshot.val();
@@ -222,7 +208,6 @@ function listenToRoomUpdates() {
             const listEl = document.getElementById('player-list');
             listEl.innerHTML = ""; 
             let allReady = true;
-            
             for (const [id, player] of Object.entries(players)) {
                 const li = document.createElement('li');
                 li.innerText = `${player.name} - ${player.status}`;
@@ -230,10 +215,7 @@ function listenToRoomUpdates() {
                 listEl.appendChild(li);
                 if (player.status !== 'ready') allReady = false;
             }
-            
-            readyBtn.disabled = false; 
-            readyBtn.innerText = "I'm Ready!";
-            
+            readyBtn.disabled = false; readyBtn.innerText = "I'm Ready!";
             if (isHost && allReady && playerIds.length >= 2) startGameBtn.classList.remove('hidden');
             else startGameBtn.classList.add('hidden');
         }
@@ -272,7 +254,6 @@ function listenToRoomUpdates() {
                     const tray = document.createElement('div');
                     tray.style.display = 'flex';
                     tray.style.justifyContent = 'center';
-                    
                     const handSize = data.hands[id]?.length || 0;
                     for(let i = 0; i < handSize; i++) {
                         const cardBack = document.createElement('div');
@@ -280,7 +261,6 @@ function listenToRoomUpdates() {
                         tray.appendChild(cardBack);
                     }
                     badge.appendChild(tray);
-
                     opponentsContainer.appendChild(badge);
                     oppIndex++;
                 }
@@ -301,7 +281,6 @@ function listenToRoomUpdates() {
                         setTimeout(() => chitDiv.classList.remove('shake-error'), 300);
                         return;
                     }
-                    
                     if (clickCooldown) return; 
                     clickCooldown = true;
                     playSound('pass');
@@ -317,7 +296,6 @@ function listenToRoomUpdates() {
                     updates[`rooms/${roomId}/hands/${nextId}`] = nextHand;
                     updates[`rooms/${roomId}/currentTurn`] = nextId; 
                     await update(ref(db), updates);
-                    
                     setTimeout(() => { clickCooldown = false; }, 300);
                 });
                 handContainer.appendChild(chitDiv);
@@ -325,45 +303,81 @@ function listenToRoomUpdates() {
             
             if (myHand.length === 3 && myHand[0] === myHand[1] && myHand[1] === myHand[2]) {
                 triggerBoostBtn.classList.remove('hidden');
-            } else {
-                triggerBoostBtn.classList.add('hidden');
-            }
+            } else { triggerBoostBtn.classList.add('hidden'); }
         }
 
-        // --- PHASE 3: REACTING (PANIC) ---
+        // --- PHASE 3: REACTING (THE HAND PILE) ---
         if (currentState === 'reacting') {
             screens.game.classList.add('panic-mode');
-            opponentsContainer.innerHTML = "";
             triggerBoostBtn.classList.add('hidden');
             emojiBar.classList.remove('hidden');
-            turnIndicator.innerText = "🚨 SOMEONE BOOSTED! 🚨";
+            turnIndicator.innerText = "🚨 SOMEONE SLAPPED! 🚨";
             turnIndicator.style.color = "white";
+
+            // Maintain the avatars sitting around the table (but remove their cards)
+            document.querySelectorAll('.mini-card').forEach(c => c.remove());
             
+            handContainer.innerHTML = "";
+            
+            // Create the central Pile
+            const pile = document.createElement('div');
+            pile.id = 'pile-container';
+            handContainer.appendChild(pile);
+
             const boostOrder = data.boostOrder || {};
-            
-            if (boostOrder[playerId]) {
-                handContainer.innerHTML = "<h2 style='color:#2dc653'>Hand slammed! Waiting...</h2>";
-            } else {
-                handContainer.innerHTML = "";
-                const panicBtn = document.createElement('div');
-                panicBtn.className = 'panic-btn';
-                panicBtn.innerText = "BOOST!";
-                panicBtn.addEventListener('click', async () => {
-                    await set(ref(db, `rooms/${roomId}/boostOrder/${playerId}`), Date.now());
+            const sortedSlaps = Object.entries(boostOrder).sort((a, b) => a[1] - b[1]);
+
+            // Draw Hands in order!
+            sortedSlaps.forEach((pair, index) => {
+                const pId = pair[0];
+                const pName = players[pId]?.name || "Player";
+                const ts = pair[1]; // Timestamp
+
+                const handDiv = document.createElement('div');
+                handDiv.className = 'slap-hand';
+                handDiv.style.zIndex = index + 1; // Stack them properly!
+                
+                // Deterministic rotation based on exact click time so they look messy
+                const rotation = (ts % 60) - 30; // Between -30 and +30 degrees
+
+                handDiv.innerHTML = `
+                    <div class="slap-inner" style="transform: rotate(${rotation}deg);">
+                        ✋
+                        <div class="slap-name">${pName}</div>
+                    </div>`;
+                pile.appendChild(handDiv);
+            });
+
+            // Draw Button if local player hasn't clicked
+            if (!boostOrder[playerId]) {
+                const slapBtn = document.createElement('div');
+                slapBtn.className = 'panic-btn';
+                slapBtn.innerText = "SLAP!";
+                slapBtn.addEventListener('click', async () => {
+                    await set(ref(db, `rooms/${roomId}/boostOrder/${playerId}`), serverTimestamp());
                 });
-                handContainer.appendChild(panicBtn);
+                handContainer.appendChild(slapBtn);
+            } else {
+                const waitText = document.createElement('h3');
+                waitText.innerText = "Hand slammed! Waiting for slowpokes...";
+                waitText.style.color = "#2dc653";
+                waitText.style.position = "absolute";
+                waitText.style.bottom = "-80px";
+                handContainer.appendChild(waitText);
             }
 
+            // HOST LOGIC: SURVIVAL SCORING!
             if (isHost && Object.keys(boostOrder).length === playerIds.length) {
-                const sortedPlayers = Object.entries(boostOrder).sort((a, b) => a[1] - b[1]);
-                const validTiers = POINTS_TIERS.slice(0, playerIds.length); 
-                
                 let scoreUpdates = {};
                 scoreUpdates[`rooms/${roomId}/gameState`] = 'scoring';
                 
-                sortedPlayers.forEach((pair, index) => {
+                sortedSlaps.forEach((pair, index) => {
                     const pId = pair[0];
-                    const pointsEarned = validTiers[index] || 10; 
+                    
+                    let pointsEarned = 20; // Middle Survivors
+                    if (index === 0) pointsEarned = 50; // The Initiator
+                    if (index === sortedSlaps.length - 1) pointsEarned = 0; // The Slowest Loser!
+                    
                     const currentScore = players[pId].totalScore || 0;
                     scoreUpdates[`rooms/${roomId}/players/${pId}/totalScore`] = currentScore + pointsEarned;
                     scoreUpdates[`rooms/${roomId}/players/${pId}/lastRoundPoints`] = pointsEarned;
@@ -372,7 +386,7 @@ function listenToRoomUpdates() {
             }
         }
 
-        // --- PHASE 4: SCOREBOARD & FINALE ---
+        // --- PHASE 4: SCOREBOARD ---
         if (currentState === 'scoring') {
             showScreen('score');
             turnIndicator.style.color = "#ff4d6d"; 
@@ -384,28 +398,31 @@ function listenToRoomUpdates() {
             
             const sortedByScore = Object.entries(players).sort((a, b) => (b[1].totalScore || 0) - (a[1].totalScore || 0));
             sortedByScore.forEach((pair, index) => {
+                const pId = pair[0];
                 const li = document.createElement('li');
                 let rankVisual = index === 0 && isFinale ? "👑 " : "";
                 
+                // Color Code the points based on Survival
+                let pointColor = "#c9184a"; // Default Middle (20)
+                if (pair[1].lastRoundPoints === 50) pointColor = "#2dc653"; // Winner Green
+                if (pair[1].lastRoundPoints === 0) pointColor = "#d90429"; // Loser Red
+                
                 li.innerHTML = `<span>${rankVisual}${pair[1].name}</span> 
                                 <span><b>Total: ${pair[1].totalScore || 0}</b> 
-                                <span style="color:#c9184a; font-size:14px;">(+${pair[1].lastRoundPoints || 0})</span></span>`;
+                                <span style="color:${pointColor}; font-size:14px; margin-left:8px;">(+${pair[1].lastRoundPoints || 0})</span></span>`;
                 
                 if (isFinale && index === 0) {
                     li.style.backgroundColor = "#ff758f";
                     li.style.color = "white";
                     li.style.transform = "scale(1.05)";
                 }
-                
                 listEl.appendChild(li);
             });
 
             if (isHost) {
                 nextRoundBtn.classList.remove('hidden');
                 nextRoundBtn.innerText = isFinale ? "End Tournament & Start Fresh" : `Start Round ${data.roundNumber + 1}`;
-            } else {
-                nextRoundBtn.classList.add('hidden');
-            }
+            } else { nextRoundBtn.classList.add('hidden'); }
         }
     });
 }
